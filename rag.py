@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Tuple, Set, Optional
+
 import torch
 from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
