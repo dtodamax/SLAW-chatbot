@@ -1,0 +1,8 @@
+altair
+pandas
+streamlit
+requests
+supabase
+sentence-transformers
+torch
+FlagEmbedding
