@@ -118,6 +118,7 @@ rag_cfg = RAGConfig(
     supabase_url=SUPABASE_URL,
     supabase_key=SUPABASE_KEY,
     rpc_function=RPC_NAME,
+    device="cuda",
 )
 supabase = create_supabase_client(rag_cfg)
 
