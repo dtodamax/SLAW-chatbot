@@ -14,7 +14,7 @@ class RAGConfig:
     supabase_key: str
     rpc_function: str = "match_law_chunks"
 
-    device: str = "cpu"
+    device: str = "cuda"
 
     # Models
     embedding_model: str = "intfloat/multilingual-e5-large"
