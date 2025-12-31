@@ -23,7 +23,7 @@ DEFAULT_MODEL = "qwen/qwen3-32b"
 MODEL = DEFAULT_MODEL
 TEMPERATURE = 0.2
 MAX_TOKENS = 6000
-RPC_NAME = "match_law_chunks"
+RPC_NAME = "hybrid_search"
 
 st.set_page_config(page_title="SLAW Chatbot", page_icon="⚖️", layout="centered")
 
