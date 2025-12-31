@@ -17,7 +17,7 @@ class RAGConfig:
     # Supabase
     supabase_url: str
     supabase_key: str
-    rpc_function: str = "match_law_chunks"
+    rpc_function: str = "hybrid_search"
 
     device: str = "cuda"
 
@@ -26,13 +26,11 @@ class RAGConfig:
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
 
     # Retrieval params
-    match_threshold: float = 0.0
-    top_k_retrieval: int = 30
+    top_k_retrieval: int = 50
     top_k_final: int = 5
 
     # Context params
     max_context_chars: int = 7000
-    
     only_send_top1_to_llm: bool = True
     show_sources: bool = True
 
@@ -86,12 +84,12 @@ class AdvancedRetriever:
         self.cfg = cfg
 
     def run(self, query: str) -> List[SearchResult]:
-        # STEP 1: RETRIEVAL (RECALL WIDE)
+        # STEP 1: HYBRID RETRIEVAL (Vector + Keywords)
         query_vec = self.mm.embed_query(query)
 
         rpc_params = {
+            "query_text": query,
             "query_embedding": query_vec,
-            "match_threshold": self.cfg.match_threshold,
             "match_count": self.cfg.top_k_retrieval,
         }
 
@@ -159,7 +157,7 @@ class AdvancedRetriever:
         if not isinstance(id_path, str):
             return ""
         parts = [p for p in id_path.split("|") if p]
-        parent_parts: []
+        parent_parts: List[str] = []
         for p in parts:
             parent_parts.append(p)
             if p.startswith("D"):
