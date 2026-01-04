@@ -21,7 +21,7 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "qwen/qwen3-32b"
 
 MODEL = DEFAULT_MODEL
-TEMPERATURE = 0.2
+TEMPERATURE = 0
 MAX_TOKENS = 6000
 RPC_NAME = "hybrid_search"
 
