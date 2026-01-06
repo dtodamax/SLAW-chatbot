@@ -8,6 +8,7 @@ from rag import RAGConfig, create_supabase_client, retrieve_context
 
 import os
 
+#Đặt key trong biến môi trường để bảo mật (để public được trên GitHub)
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
@@ -21,40 +22,37 @@ GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "qwen/qwen3-32b"
 
 MODEL = DEFAULT_MODEL
-TEMPERATURE = 0
+TEMPERATURE = 0 # Temp để bằng 0 để tránh LLM trả lời dài dòng quá
 MAX_TOKENS = 1000
 RPC_NAME = "hybrid_search"
 
 st.set_page_config(page_title="SLAW Chatbot", page_icon="⚖️", layout="centered")
 
-# ---------------------------
+
 # SESSION
-# ---------------------------
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = []  #Hỗ trợ lưu lại lịch sử hội thoại với người dùng để chatbot trả lời theo ngữ cảnh trước đó đang diễn ra
 if "groq_api_key" not in st.session_state:
     st.session_state.groq_api_key = GROQ_API_KEY
 
-# ---------------------------
+
 # TEXT CLEANUP
-# ---------------------------
 _THINK_RE = re.compile(r"<think>.*?</think>", flags=re.DOTALL | re.IGNORECASE)
 
-def clean_model_text(text: str) -> str:
+def clean_model_text(text: str) -> str: #Xóa phần thinking của LLM hiển thị trên giao diện
     if not text:
         return text
     text = _THINK_RE.sub("", text)
     text = text.replace("<think>", "").replace("</think>", "")
     return text.strip()
 
-# ---------------------------
-# GROQ STREAM
-# ---------------------------
+
+# Step này là gửi prompt lên API rồi nhận về câu trả lời
 def groq_chat_stream(
     api_key: str,
     model: str,
     messages: List[Dict[str, str]],
-    temperature: float = 0.2,
+    temperature: int = 0,
     max_tokens: int = 6000,
     timeout: int = 60,
 ):
@@ -111,9 +109,8 @@ def build_system_prompt() -> str:
         "- Với các tình huống pháp lý cụ thể hoặc nhạy cảm (xử phạt, tranh chấp, khiếu nại, kiện tụng…), khuyến nghị tham vấn luật sư.\n"
     )
 
-# ---------------------------
-# RAG init
-# ---------------------------
+
+# Khởi tạo RAG
 rag_cfg = RAGConfig(
     supabase_url=SUPABASE_URL,
     supabase_key=SUPABASE_KEY,
@@ -122,18 +119,17 @@ rag_cfg = RAGConfig(
 )
 supabase = create_supabase_client(rag_cfg)
 
-# ---------------------------
-# UI MAIN
-# ---------------------------
-st.title("⚖️ SLAW Chatbot")
-st.caption("Giải đáp thắc mắc luật pháp cùng SLAW — bạn của mọi nhà.")
 
-# Render history
+# UI
+st.title("⚖️ SLAW Chatbot")
+st.caption("Giải đáp mọi thắc mắc về luật pháp cùng SLAW — bạn của mọi nhà.")
+
+
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
         if m["role"] == "assistant" and m.get("sources"):
-            with st.expander("📚 Sources"):
+            with st.expander("📚 Sources"): #Hỗ trợ hiển thị sources cho câu trả lời
                 for s in m["sources"]:
                     st.markdown(f"- {s}")
 
@@ -147,7 +143,7 @@ if user_text:
     with st.chat_message("assistant"):
         system_prompt = build_system_prompt()
 
-        # history: bỏ message user cuối cùng để re-add kèm CONTEXT
+        # Step này sẽ loại bỏ câu hỏi user vừa hỏi khỏi history, sau đó readd lại câu hỏi đó nhưng lúc này đã kèm context cho LLM trả lời kĩ hơn
         history = [
             {"role": m["role"], "content": m["content"]}
             for m in st.session_state.messages[-10:]
@@ -156,14 +152,14 @@ if user_text:
         if history and history[-1]["role"] == "user":
             history = history[:-1]
 
-        # ---- RAG retrieve ----
+        # RAG retrieve
         try:
             context, sources = retrieve_context(supabase, rag_cfg, user_text)
         except Exception as e:
             context, sources = "", []
             st.warning(f"⚠️ Lỗi retrieval: {e}")
 
-        # add context into user message
+        # Đưa cho LLM câu hỏi kèm theo context pháp luật để trả lời chính xác hơn
         user_with_context = f"CONTEXT:\n{context}\n\nCÂU HỎI:\n{user_text}"
 
         messages_for_llm = [{"role": "system", "content": system_prompt}] + history + [
