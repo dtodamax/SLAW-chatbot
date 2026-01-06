@@ -9,9 +9,6 @@ from sentence_transformers import SentenceTransformer
 from FlagEmbedding import FlagReranker
 
 
-# =========================
-# CONFIG
-# =========================
 @dataclass
 class RAGConfig:
     # Supabase
@@ -19,25 +16,24 @@ class RAGConfig:
     supabase_key: str
     rpc_function: str = "hybrid_search"
 
-    device: str = "cuda"
+    device: str = "cuda" #Này dùng để gọi GPU của Colab chạy cho nhanh
 
     # Models
     embedding_model: str = "intfloat/multilingual-e5-large"
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
 
-    # Retrieval params
+    # Retrieval params: quét từ 50 xuống 5 để đảm bảo k bị sót
     top_k_retrieval: int = 50
     top_k_final: int = 5
 
     # Context params
     max_context_chars: int = 7000
-    only_send_top1_to_llm: bool = True
+    only_send_top1_to_llm: bool = True #Để giảm nhiễu và hallucination thì chỉ gửi top 1 cho LLM trả lời
     show_sources: bool = True
 
 
-# =========================
-# DATA STRUCTURES
-# =========================
+
+# DATA STRUCTURES: chuẩn hóa kết quả để đưa qua cho LLM
 @dataclass
 class SearchResult:
     source_id: str
@@ -47,22 +43,17 @@ class SearchResult:
     id_path: str
 
 
-# =========================
 # MODEL MANAGER
-# =========================
 class ModelManager:
     def __init__(self, cfg: RAGConfig):
         self.cfg = cfg
-
-        # 1) Load Embedding Model (E5)
+        # Load Embedding Model
         self.embedder = SentenceTransformer(cfg.embedding_model, device=cfg.device)
-
-        # 2) Load Reranker Model (BGE)
+        # Load Reranker Model
         self.reranker = FlagReranker(cfg.reranker_model, use_fp16=(cfg.device == "cuda"))
-
-        # 3) Connect Supabase
+        # Kết nối với database
         if not cfg.supabase_url or not cfg.supabase_key:
-            raise ValueError("Thiếu Supabase Credentials!")
+            raise ValueError("Thiếu Supabase Credentials")
         self.db_client: Client = create_client(cfg.supabase_url, cfg.supabase_key)
 
     def embed_query(self, text: str) -> List[float]:
@@ -75,16 +66,14 @@ class ModelManager:
         return scores if isinstance(scores, list) else [scores]
 
 
-# =========================
 # RETRIEVER
-# =========================
 class AdvancedRetriever:
     def __init__(self, mm: ModelManager, cfg: RAGConfig):
         self.mm = mm
         self.cfg = cfg
 
     def run(self, query: str) -> List[SearchResult]:
-        # STEP 1: HYBRID RETRIEVAL (Vector + Keywords)
+        # HYBRID RETRIEVAL (Vector + Keywords)
         query_vec = self.mm.embed_query(query)
 
         rpc_params = {
@@ -102,7 +91,7 @@ class AdvancedRetriever:
         if not candidates:
             return []
 
-        # STEP 2: RERANKING (PRECISION)
+        # RERANKING: sắp xếp lại thứ tự liên quan dựa trên precision
         pairs = [[query, item.get("content", "")] for item in candidates]
         scores = self.mm.rerank_pairs(pairs)
 
@@ -111,7 +100,7 @@ class AdvancedRetriever:
 
         ranked_candidates = sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
 
-        # STEP 3: EXPANSION & DEDUPLICATION
+        # EXPANSION & DEDUPLICATION
         final_results: List[SearchResult] = []
         seen_parent_ids: Set[str] = set()
 
@@ -125,11 +114,11 @@ class AdvancedRetriever:
 
             parent_id = meta.get("article")
 
-            # fallback nhỏ để tránh parent_id=None làm dedup sai
+            # Xác định luật cha từ idpath để dedup
             if not isinstance(parent_id, str) or not parent_id.strip():
                 parent_id = self._parent_id_from_id_path(meta.get("id_path")) or "UNKNOWN_PARENT"
 
-            # dedup theo parent
+            # dedup theo cha
             if parent_id in seen_parent_ids:
                 continue
             seen_parent_ids.add(parent_id)
@@ -165,13 +154,11 @@ class AdvancedRetriever:
         return "|".join(parent_parts)
 
 
-# =========================
 # PUBLIC API
-# =========================
 _MM: Optional[ModelManager] = None
 _RETRIEVER: Optional[AdvancedRetriever] = None
 
-
+# Đảm bảo các model chỉ load 1 lần duy nhất
 def init_rag(cfg: RAGConfig) -> Tuple[ModelManager, AdvancedRetriever]:
     global _MM, _RETRIEVER
 
@@ -198,7 +185,7 @@ def retrieve_context(
     """
     Trả về:
       - context (string): ghép full_context của các parent sau dedup
-      - sources (list): dùng cho UI expander (nếu cfg.show_sources=True)
+      - sources (list): hiển thị nguồn cho UI
     """
     _, retriever = init_rag(cfg)
     results = retriever.run(query)
