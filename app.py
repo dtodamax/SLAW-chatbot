@@ -23,7 +23,7 @@ DEFAULT_MODEL = "qwen/qwen3-32b"
 
 MODEL = DEFAULT_MODEL
 TEMPERATURE = 0 # Temp để bằng 0 để tránh LLM trả lời dài dòng quá
-MAX_TOKENS = 1000
+MAX_TOKENS = 6000
 RPC_NAME = "hybrid_search"
 
 st.set_page_config(page_title="SLAW Chatbot", page_icon="⚖️", layout="centered")
