@@ -6,3 +6,5 @@ supabase
 sentence-transformers
 torch
 FlagEmbedding
+underthesea 
+sentence-transformers supabase FlagEmbedding
