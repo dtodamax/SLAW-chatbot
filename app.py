@@ -19,7 +19,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Missing SUPABASE env vars")
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "qwen/qwen3-32b"
+DEFAULT_MODEL = "qwen/qwen3.6-27b"
 
 MODEL = DEFAULT_MODEL
 TEMPERATURE = 0 # Temp để bằng 0 để tránh LLM trả lời dài dòng quá
@@ -97,7 +97,7 @@ def build_system_prompt() -> str:
 
         "QUY TẮC BẮT BUỘC:\n"
         "1) Chỉ sử dụng thông tin có trong CONTEXT. Không tự bịa hoặc viện dẫn quy định không có trong CONTEXT.\n"
-        "2) Không hiển thị hoặc nhắc tới thẻ <think> hay suy nghĩ nội bộ.\n"
+        "2) Hiển thị hoặc nhắc tới thẻ <think> hay suy nghĩ nội bộ.\n"
         "3) Nếu CONTEXT không đủ để kết luận, nói rõ 'Chưa đủ thông tin trong tài liệu được cung cấp' và nêu 1–3 câu hỏi cần bổ sung.\n\n"
 
         "CÁCH TRẢ LỜI:\n"
