@@ -37,14 +37,14 @@ if "groq_api_key" not in st.session_state:
 
 
 # TEXT CLEANUP
-_THINK_RE = re.compile(r"<think>.*?</think>", flags=re.DOTALL | re.IGNORECASE)
+#_THINK_RE = re.compile(r"<think>.*?</think>", flags=re.DOTALL | re.IGNORECASE)
 
-def clean_model_text(text: str) -> str: #Xóa phần thinking của LLM hiển thị trên giao diện
-    if not text:
-        return text
-    text = _THINK_RE.sub("", text)
-    text = text.replace("<think>", "").replace("</think>", "")
-    return text.strip()
+#def clean_model_text(text: str) -> str: #Xóa phần thinking của LLM hiển thị trên giao diện
+    #if not text:
+        #return text
+    #text = _THINK_RE.sub("", text)
+    #text = text.replace("<think>", "").replace("</think>", "")
+    #return text.strip()
 
 
 # Step này là gửi prompt lên API rồi nhận về câu trả lời
@@ -178,9 +178,11 @@ if user_text:
                 max_tokens=MAX_TOKENS,
             ):
                 acc += delta
-                placeholder.markdown(clean_model_text(acc))
+                placeholder.markdown(acc)
+                #placeholder.markdown(clean_model_text(acc))
 
-            final = clean_model_text(acc) or "(Không có phản hồi từ mô hình)"
+            #final = clean_model_text(acc) or "(Không có phản hồi từ mô hình)"
+            final = acc.strip() or "(Không có phản hồi từ mô hình)"
             st.session_state.messages.append(
                 {"role": "assistant", "content": final, "sources": sources}
             )
